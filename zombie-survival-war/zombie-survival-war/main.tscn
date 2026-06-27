@@ -1,0 +1,230 @@
+[gd_scene format=3 uid="uid://crfhf7lskvpsa"]
+
+[ext_resource type="Script" uid="uid://odjr5bmtgm0q" path="res://scripts/Player.gd" id="1_h2yge"]
+[ext_resource type="Script" uid="uid://3sbrhie2sgff" path="res://scripts/Island.gd" id="3_lquwl"]
+[ext_resource type="PackedScene" uid="uid://cyr63lwefh8t1" path="res://GameUI.tscn" id="4_1bvp3"]
+
+[sub_resource type="Environment" id="Environment_eyj0i"]
+fog_enabled = true
+fog_light_color = Color(0.039215688, 0.05882353, 0.11764706, 1)
+fog_density = 0.005
+
+[sub_resource type="NavigationMesh" id="NavigationMesh_6ykuk"]
+geometry_parsed_geometry_type = 1
+geometry_source_geometry_mode = 1
+geometry_source_group_name = &"navigation"
+agent_height = 2.0
+agent_max_climb = 0.5
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_eyj0i"]
+size = Vector2(2000, 2000)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_kysn4"]
+transparency = 1
+albedo_color = Color(0.019607844, 0.101960786, 0.2, 1)
+metallic = 0.8
+roughness = 0.1
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_6ykuk"]
+radius = 0.4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_lquwl"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7mycd"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_h2yge"]
+albedo_color = Color(0.4916376, 0.6143694, 1, 1)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_eyj0i"]
+material = SubResource("StandardMaterial3D_h2yge")
+
+[sub_resource type="Gradient" id="Gradient_black"]
+colors = PackedColorArray(0, 0, 0, 1, 0, 0, 0, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_black"]
+gradient = SubResource("Gradient_black")
+width = 100
+height = 10
+fill = 1
+
+[sub_resource type="Gradient" id="Gradient_green"]
+colors = PackedColorArray(0.2, 0.8, 0.2, 1, 0.2, 0.8, 0.2, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_green"]
+gradient = SubResource("Gradient_green")
+width = 100
+height = 10
+fill = 1
+
+[node name="Main" type="Node3D" unique_id=1108607685]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1571483792]
+environment = SubResource("Environment_eyj0i")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=636025189]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 100, 200, 100)
+shadow_enabled = true
+
+[node name="NavigationRegion3D" type="NavigationRegion3D" parent="." unique_id=112333807]
+navigation_mesh = SubResource("NavigationMesh_6ykuk")
+
+[node name="Island" type="Node3D" parent="NavigationRegion3D" unique_id=1923299808]
+script = ExtResource("3_lquwl")
+
+[node name="Terrain" type="StaticBody3D" parent="NavigationRegion3D/Island" unique_id=675954493 groups=["Navigation"]]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Island/Terrain" unique_id=249039935]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Island/Terrain" unique_id=1471110477]
+
+[node name="Ocean" type="MeshInstance3D" parent="NavigationRegion3D/Island" unique_id=869874313]
+transform = Transform3D(0.9999999, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 0, 0, 0)
+mesh = SubResource("PlaneMesh_eyj0i")
+surface_material_override/0 = SubResource("StandardMaterial3D_kysn4")
+
+[node name="RocksContainer" type="Node3D" parent="NavigationRegion3D/Island" unique_id=592420004]
+
+[node name="VegetationContainer" type="Node3D" parent="NavigationRegion3D/Island" unique_id=821566087]
+
+[node name="Player" type="CharacterBody3D" parent="." unique_id=1633014300 groups=["Player"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 25, 0)
+script = ExtResource("1_h2yge")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Player" unique_id=127213494]
+shape = SubResource("CylinderShape3D_6ykuk")
+
+[node name="CameraPivot" type="Node3D" parent="Player" unique_id=1788794327]
+
+[node name="Camera3D" type="Camera3D" parent="Player/CameraPivot" unique_id=468461176]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 5)
+
+[node name="UI" type="CanvasLayer" parent="Player" unique_id=266692329]
+
+[node name="Crosshair" type="ColorRect" parent="Player/UI" unique_id=878473920]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -4.0
+offset_top = -4.0
+offset_right = 4.0
+offset_bottom = 4.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(1, 0, 0, 0.8)
+
+[node name="JumpButton" type="Button" parent="Player/UI" unique_id=492900377]
+anchors_preset = -1
+anchor_left = 0.519
+anchor_top = 0.38
+anchor_right = 0.544
+anchor_bottom = 0.38
+offset_left = 460.0
+offset_top = 290.0
+offset_right = 514.0
+offset_bottom = 321.0
+text = "Saltar"
+
+[node name="CrouchButton" type="Button" parent="Player/UI" unique_id=1335982724]
+anchors_preset = -1
+anchor_left = 0.506
+anchor_top = 0.38
+anchor_right = 0.519
+anchor_bottom = 0.38
+offset_left = 444.0
+offset_top = 248.0
+offset_right = 533.0
+offset_bottom = 279.0
+text = "Agacharse"
+
+[node name="ShootButton" type="Button" parent="Player/UI" unique_id=1871129316]
+anchors_preset = -1
+anchor_left = 0.43
+anchor_top = 0.354
+anchor_right = 0.443
+anchor_bottom = 0.354
+offset_left = 400.0
+offset_top = 200.0
+offset_right = 480.0
+offset_bottom = 280.0
+text = "DISPARAR"
+
+[node name="GameUI" parent="Player" unique_id=1161807695 instance=ExtResource("4_1bvp3")]
+anchors_preset = -1
+anchor_right = 1.0350001
+anchor_bottom = 1.062
+offset_left = -2.0
+offset_right = -2.3200684
+offset_bottom = -0.17602539
+
+[node name="HealthBar2" type="ProgressBar" parent="Player/GameUI" unique_id=1966091099]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.35
+anchor_top = 0.92
+anchor_right = 0.65
+anchor_bottom = 0.97
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/background = SubResource("StyleBoxFlat_lquwl")
+theme_override_styles/fill = SubResource("StyleBoxFlat_7mycd")
+step = 1.0
+value = 100.0
+
+[node name="ZombiesLabel2" type="Label" parent="Player/GameUI" unique_id=1134731174]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.05
+anchor_top = 0.02
+anchor_right = 0.3
+anchor_bottom = 0.1
+offset_right = 1.0
+offset_bottom = 23.0
+theme_override_font_sizes/font_size = 32
+vertical_alignment = 1
+
+[node name="WaveLabel2" type="Label" parent="Player/GameUI" unique_id=2060674046]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.634
+anchor_top = 0.02
+anchor_right = 0.95
+anchor_bottom = 0.1
+offset_right = 40.0
+offset_bottom = 23.0
+theme_override_font_sizes/font_size = 32
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="CoinsLabel" type="Label" parent="Player/GameUI" unique_id=1636461983]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.05
+anchor_top = 0.12
+anchor_right = 0.3
+anchor_bottom = 0.2
+offset_right = 40.0
+offset_bottom = 23.0
+theme_override_colors/font_color = Color(0.41564935, 0.41564932, 5.7756904e-07, 1)
+theme_override_font_sizes/font_size = 32
+text = "Monedas: 0"
+vertical_alignment = 1
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Player" unique_id=993973938]
+mesh = SubResource("CylinderMesh_eyj0i")
+
+[node name="Zombie#HealthBar" type="Node3D" parent="." unique_id=193794091]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+
+[node name="Zombie_HealthBar#Background" type="Sprite3D" parent="." unique_id=594236630]
+texture = SubResource("GradientTexture2D_black")
+
+[node name="Zombie_HealthBar#Fill" type="Sprite3D" parent="." unique_id=1706633256]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.01)
+texture = SubResource("GradientTexture2D_green")
+
+[connection signal="pressed" from="Player/UI/JumpButton" to="Player" method="_on_jump_button_pressed"]
+[connection signal="button_down" from="Player/UI/CrouchButton" to="Player" method="_on_crouch_button_button_down"]
+[connection signal="button_up" from="Player/UI/CrouchButton" to="Player" method="_on_crouch_button_button_up"]
+[connection signal="pressed" from="Player/UI/ShootButton" to="Player" method="_on_shoot_button_pressed"]
