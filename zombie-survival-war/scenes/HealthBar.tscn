@@ -3,9 +3,6 @@
 [ext_resource type="Script" uid="uid://3sbrhie2sgff" path="res://scripts/Island.gd" id="1_8p41q"]
 [ext_resource type="Script" uid="uid://odjr5bmtgm0q" path="res://scripts/Player.gd" id="2_6xj70"]
 [ext_resource type="PackedScene" uid="uid://xilofqs2lcs7" path="res://scenes/zombie.tscn" id="3_p3jmp"]
-[ext_resource type="Script" uid="uid://gv62hda4pkl" path="res://scripts/GameManager.gd" id="4_6xj70"]
-[ext_resource type="Script" uid="uid://daoclcoadr6bb" path="res://scripts/WaveManager.gd" id="5_p3jmp"]
-[ext_resource type="Script" uid="uid://bpx0cahs2g1o0" path="res://scripts/ZombieSpawner.gd" id="6_gs51f"]
 
 [sub_resource type="Environment" id="Environment_eyj0i"]
 fog_enabled = true
@@ -121,15 +118,6 @@ mesh = SubResource("CylinderMesh_eyj0i")
 
 [node name="Zombie" parent="." unique_id=1612897889 instance=ExtResource("3_p3jmp")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 25, 20)
-
-[node name="GameManager" type="Node3D" parent="." unique_id=1895120792 groups=["GameManager"]]
-script = ExtResource("4_6xj70")
-
-[node name="WaveManager" type="Node3D" parent="." unique_id=1416595230 groups=["WaveManager"]]
-script = ExtResource("5_p3jmp")
-
-[node name="ZombieSpawner" type="Node3D" parent="." unique_id=326317219 groups=["ZombieSpawner"]]
-script = ExtResource("6_gs51f")
 
 [connection signal="pressed" from="Player/UI/JumpButton" to="Player" method="_on_jump_button_pressed"]
 [connection signal="button_down" from="Player/UI/CrouchButton" to="Player" method="_on_crouch_button_button_down"]
