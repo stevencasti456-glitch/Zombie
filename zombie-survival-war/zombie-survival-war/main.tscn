@@ -4,10 +4,35 @@
 [ext_resource type="Script" uid="uid://3sbrhie2sgff" path="res://scripts/Island.gd" id="3_lquwl"]
 [ext_resource type="PackedScene" uid="uid://cyr63lwefh8t1" path="res://GameUI.tscn" id="4_1bvp3"]
 
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_eyj0i"]
+sky_top_color = Color(0.384, 0.455, 0.651, 1)
+sky_horizon_color = Color(0.886, 0.824, 0.706, 1)
+ground_bottom_color = Color(0.149, 0.184, 0.149, 1)
+ground_horizon_color = Color(0.886, 0.824, 0.706, 1)
+
+[sub_resource type="Sky" id="Sky_eyj0i"]
+sky_material = SubResource("ProceduralSkyMaterial_eyj0i")
+
 [sub_resource type="Environment" id="Environment_eyj0i"]
+background_mode = 2
+sky = SubResource("Sky_eyj0i")
+ambient_light_source = 3
+ambient_light_color = Color(0.4, 0.5, 0.7, 1)
+ambient_light_energy = 0.6
+tonemap_mode = 3
+tonemap_exposure = 0.9
+tonemap_white = 1.2
+ssao_enabled = true
+ssao_radius = 1.5
+glow_enabled = true
+glow_strength = 0.8
+glow_bloom = 0.15
 fog_enabled = true
-fog_light_color = Color(0.039215688, 0.05882353, 0.11764706, 1)
-fog_density = 0.005
+fog_mode = 1
+fog_light_color = Color(0.886, 0.824, 0.706, 1)
+fog_light_energy = 0.6
+fog_density = 0.001
+fog_sky_affect = 0.3
 
 [sub_resource type="NavigationMesh" id="NavigationMesh_6ykuk"]
 geometry_parsed_geometry_type = 1
@@ -21,9 +46,10 @@ size = Vector2(2000, 2000)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_kysn4"]
 transparency = 1
-albedo_color = Color(0.019607844, 0.101960786, 0.2, 1)
-metallic = 0.8
-roughness = 0.1
+albedo_color = Color(0.05, 0.15, 0.25, 0.85)
+metallic = 0.1
+roughness = 0.05
+refraction_enabled = true
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_6ykuk"]
 radius = 0.4
@@ -62,8 +88,16 @@ fill = 1
 environment = SubResource("Environment_eyj0i")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=636025189]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 100, 200, 100)
+transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 0, 0, 0)
+light_color = Color(1, 0.95, 0.8, 1)
+light_energy = 2.0
 shadow_enabled = true
+shadow_bias = 0.05
+shadow_blur = 2.0
+directional_shadow_mode = 1
+directional_shadow_split_1 = 0.15
+directional_shadow_split_2 = 0.3
+directional_shadow_max_distance = 200.0
 
 [node name="NavigationRegion3D" type="NavigationRegion3D" parent="." unique_id=112333807]
 navigation_mesh = SubResource("NavigationMesh_6ykuk")
