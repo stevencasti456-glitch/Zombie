@@ -1,225 +1,298 @@
 extends CharacterBody3D
 
-# ============================================================
-# SISTEMA DE VIDA
-# ============================================================
+@export var SPEED: float = 5.0
+@export var JUMP_VELOCITY: float = 8.0
+@export var SENSITIVITY: float = 0.005
+@export var CAMERA_DISTANCE: float = 8.0
+@export var CAMERA_HEIGHT: float = 4.0
+
+# Vida del jugador
 @export var max_health: int = 100
-var current_health: int = 100
+var health: int = 100
 
-# ============================================================
-# SISTEMA DE DISPARO - FASE 3
-# ============================================================
-@export var SHOOT_DAMAGE: int = 25
-@export var SHOOT_COOLDOWN: float = 0.5
-@export var SHOOT_RANGE: float = 50.0
+# Referencias
+var camera: Camera3D
+var camera_pivot: Node3D
+var mesh_instance: Node3D
 
+# Estado
 var can_shoot: bool = true
-var shoot_timer: float = 0.0
-
-# ============================================================
-# MOVIMIENTO
-# ============================================================
-const SPEED = 5.0
-const CROUCH_SPEED = 2.5
-const JUMP_VELOCITY = 6.5
-const GRAVITY = 15.0
-const TOUCH_SENSITIVITY = 0.005
-
-# ============================================================
-# REFERENCIAS
-# ============================================================
-@onready var camera_pivot: Node3D = $CameraPivot
-@onready var camera_3d: Camera3D = $CameraPivot/Camera3D
-
-var move_input: Vector2 = Vector2.ZERO
-var touch_look_input: Vector2 = Vector2.ZERO
-var left_finger_index: int = -1
-var right_finger_index: int = -1
-var left_joystick_center: Vector2 = Vector2.ZERO
-
+var shoot_cooldown: float = 0.5
 var is_crouching: bool = false
-var current_speed: float = SPEED
+
+# Controles táctiles
+var joystick: Node
+var jump_button: Node
+var crouch_button: Node
+var shoot_button: Node
+
+# ============================================================
+# CREAR PERSONAJE HUMANOIDE (FASE 2.5)
+# ============================================================
+func create_humanoid_character() -> void:
+	# Eliminar mesh cilindro anterior si existe
+	var old_mesh = get_node_or_null("MeshInstance3D")
+	if old_mesh:
+		old_mesh.queue_free()
+	
+	# Crear contenedor del personaje
+	var character = Node3D.new()
+	character.name = "CharacterModel"
+	add_child(character)
+	
+	# Materiales
+	var skin_mat = StandardMaterial3D.new()
+	skin_mat.albedo_color = Color(0.9, 0.7, 0.5)
+	skin_mat.roughness = 0.8
+	
+	var shirt_mat = StandardMaterial3D.new()
+	shirt_mat.albedo_color = Color(0.2, 0.3, 0.5)
+	shirt_mat.roughness = 0.7
+	
+	var pants_mat = StandardMaterial3D.new()
+	pants_mat.albedo_color = Color(0.15, 0.15, 0.2)
+	pants_mat.roughness = 0.9
+	
+	var boots_mat = StandardMaterial3D.new()
+	boots_mat.albedo_color = Color(0.1, 0.08, 0.05)
+	boots_mat.roughness = 0.6
+	
+	# Cabeza
+	var head = MeshInstance3D.new()
+	var head_mesh = SphereMesh.new()
+	head_mesh.radius = 0.25
+	head_mesh.height = 0.5
+	head.mesh = head_mesh
+	head.set_surface_override_material(0, skin_mat)
+	head.position = Vector3(0, 1.7, 0)
+	character.add_child(head)
+	
+	# Torso
+	var torso = MeshInstance3D.new()
+	var torso_mesh = CapsuleMesh.new()
+	torso_mesh.radius = 0.3
+	torso_mesh.height = 0.8
+	torso.mesh = torso_mesh
+	torso.set_surface_override_material(0, shirt_mat)
+	torso.position = Vector3(0, 1.0, 0)
+	character.add_child(torso)
+	
+	# Brazos
+	var arm_mesh = CylinderMesh.new()
+	arm_mesh.top_radius = 0.08
+	arm_mesh.bottom_radius = 0.07
+	arm_mesh.height = 0.7
+	
+	var left_arm = MeshInstance3D.new()
+	left_arm.mesh = arm_mesh
+	left_arm.set_surface_override_material(0, skin_mat)
+	left_arm.position = Vector3(-0.4, 1.2, 0)
+	left_arm.rotation.z = 0.2
+	character.add_child(left_arm)
+	
+	var right_arm = MeshInstance3D.new()
+	right_arm.mesh = arm_mesh
+	right_arm.set_surface_override_material(0, skin_mat)
+	right_arm.position = Vector3(0.4, 1.2, 0)
+	right_arm.rotation.z = -0.2
+	character.add_child(right_arm)
+	
+	# Piernas
+	var leg_mesh = CylinderMesh.new()
+	leg_mesh.top_radius = 0.12
+	leg_mesh.bottom_radius = 0.1
+	leg_mesh.height = 0.9
+	
+	var left_leg = MeshInstance3D.new()
+	left_leg.mesh = leg_mesh
+	left_leg.set_surface_override_material(0, pants_mat)
+	left_leg.position = Vector3(-0.15, 0.45, 0)
+	character.add_child(left_leg)
+	
+	var right_leg = MeshInstance3D.new()
+	right_leg.mesh = leg_mesh
+	right_leg.set_surface_override_material(0, pants_mat)
+	right_leg.position = Vector3(0.15, 0.45, 0)
+	character.add_child(right_leg)
+	
+	# Botas
+	var boot_mesh = CylinderMesh.new()
+	boot_mesh.top_radius = 0.11
+	boot_mesh.bottom_radius = 0.13
+	boot_mesh.height = 0.3
+	
+	var left_boot = MeshInstance3D.new()
+	left_boot.mesh = boot_mesh
+	left_boot.set_surface_override_material(0, boots_mat)
+	left_boot.position = Vector3(-0.15, 0.15, 0)
+	character.add_child(left_boot)
+	
+	var right_boot = MeshInstance3D.new()
+	right_boot.mesh = boot_mesh
+	right_boot.set_surface_override_material(0, boots_mat)
+	right_boot.position = Vector3(0.15, 0.15, 0)
+	character.add_child(right_boot)
+	
+	# Rifle
+	var rifle = MeshInstance3D.new()
+	var rifle_mesh = BoxMesh.new()
+	rifle_mesh.size = Vector3(0.08, 0.15, 0.6)
+	rifle.mesh = rifle_mesh
+	var rifle_mat = StandardMaterial3D.new()
+	rifle_mat.albedo_color = Color(0.15, 0.15, 0.15)
+	rifle_mat.roughness = 0.4
+	rifle_mat.metallic = 0.8
+	rifle.set_surface_override_material(0, rifle_mat)
+	rifle.position = Vector3(0.25, 0.9, 0.4)
+	rifle.rotation.x = -0.2
+	character.add_child(rifle)
+	
+	# Guardar referencia
+	mesh_instance = character
 
 # ============================================================
 # READY
 # ============================================================
 func _ready() -> void:
-	current_speed = SPEED
-	current_health = max_health
-	print("JUGADOR LISTO - Vida: ", current_health, "/", max_health)
-	print("SISTEMA DE DISPARO LISTO - Daño: ", SHOOT_DAMAGE, " | Cooldown: ", SHOOT_COOLDOWN, "s")
-
-# ============================================================
-# SISTEMA DE VIDA
-# ============================================================
-func take_damage(amount: int) -> void:
-	current_health -= amount
-	if current_health < 0:
-		current_health = 0
-	print("DAÑO RECIBIDO: -", amount, " | Vida: ", current_health, "/", max_health)
-	if current_health == 0:
-		die()
-
-func heal(amount: int) -> void:
-	current_health += amount
-	if current_health > max_health:
-		current_health = max_health
-	print("CURACION: +", amount, " | Vida: ", current_health, "/", max_health)
-
-func get_health() -> int:
-	return current_health
-
-func is_alive() -> bool:
-	return current_health > 0
-
-func die() -> void:
-	print("JUGADOR MUERTO")
-	move_input = Vector2.ZERO
-	set_physics_process(false)
-
-# ============================================================
-# SISTEMA DE DISPARO - CORREGIDO
-# ============================================================
-
-func _on_shoot_button_pressed() -> void:
-	shoot()
-
-func shoot() -> void:
-	if not can_shoot:
-		print("DISPARO EN COOLDOWN")
-		return
+	velocity = Vector3.ZERO
+	health = max_health
+	camera = get_node("CameraPivot/Camera3D")
+	camera_pivot = get_node("CameraPivot")
 	
-	if not is_alive():
-		return
+	# Crear personaje humanoide en vez de usar el mesh cilindro
+	create_humanoid_character()
 	
-	can_shoot = false
-	shoot_timer = 0.0
+	# Configurar controles táctiles
+	setup_touch_controls()
 	
-	print("💥 ¡DISPARO!")
-	
-	# ✅ CORREGIDO: RayCast que IGNORA al jugador
-	var space_state = get_world_3d().direct_space_state
-	
-	# Punto de inicio: ligeramente adelante de la cámara para no tocarnos
-	var camera_forward = -camera_3d.global_transform.basis.z.normalized()
-	var origin = camera_3d.global_position + camera_forward * 1.5  # 1.5 metros adelante de la cámara
-	var end = origin + camera_forward * SHOOT_RANGE
-	
-	var query = PhysicsRayQueryParameters3D.new()
-	query.from = origin
-	query.to = end
-	query.collision_mask = 1
-	query.exclude = [self]  # ✅ IGNORAR al jugador (this)
-	
-	var result = space_state.intersect_ray(query)
-	
-	if result:
-		var hit_object = result.collider
-		var hit_point = result.position
+	# Configurar animación
+	setup_animations()
+
+func setup_touch_controls() -> void:
+	var ui = get_node_or_null("UI")
+	if ui:
+		joystick = ui.get_node_or_null("Joystick")
+		jump_button = ui.get_node_or_null("JumpButton")
+		crouch_button = ui.get_node_or_null("CrouchButton")
+		shoot_button = ui.get_node_or_null("ShootButton")
 		
-		print("Impacto en: ", hit_object.name, " | Punto: ", hit_point)
-		
-		# Verificar si es zombie
-		if hit_object.is_in_group("Zombie") or "Zombie" in hit_object.name:
-			if hit_object.has_method("take_damage"):
-				hit_object.take_damage(SHOOT_DAMAGE)
-				print("💀 Zombie herido! Daño: ", SHOOT_DAMAGE)
-			else:
-				print("El zombie no tiene metodo take_damage")
-		else:
-			print("Impacto en objeto: ", hit_object.name)
-	else:
-		print("Disparo al aire")
+		if jump_button:
+			jump_button.pressed.connect(_on_jump_pressed)
+		if crouch_button:
+			crouch_button.pressed.connect(_on_crouch_pressed)
+		if shoot_button:
+			shoot_button.pressed.connect(_on_shoot_pressed)
 
-# ============================================================
-# FISICA
-# ============================================================
+func setup_animations() -> void:
+	# Aquí puedes agregar animaciones del personaje
+	pass
+
 func _physics_process(delta: float) -> void:
-	# Cooldown de disparo
-	if not can_shoot:
-		shoot_timer += delta
-		if shoot_timer >= SHOOT_COOLDOWN:
-			can_shoot = true
-			shoot_timer = 0.0
-	
 	# Gravedad
 	if not is_on_floor():
-		velocity.y -= GRAVITY * delta
+		velocity.y -= 25.0 * delta
 	
-	# Movimiento
-	var direction := Vector3.ZERO
-	if move_input.length() > 0.0:
-		var aim: Basis = global_transform.basis
-		direction = (aim.z * move_input.y + aim.x * move_input.x).normalized()
+	# Manejar input
+	handle_input(delta)
 	
-	if direction != Vector3.ZERO:
-		velocity.x = direction.x * current_speed
-		velocity.z = direction.z * current_speed
-	else:
-		velocity.x = move_toward(velocity.x, 0, current_speed)
-		velocity.z = move_toward(velocity.z, 0, current_speed)
-	
+	# Mover personaje
 	move_and_slide()
-
-# ============================================================
-# CONTROLES TACTILES
-# ============================================================
-func _input(event: InputEvent) -> void:
-	if event is InputEventScreenTouch:
-		if event.is_pressed():
-			if event.position.x > get_viewport().size.x / 2 and right_finger_index == -1:
-				right_finger_index = event.index
-			elif event.position.x <= get_viewport().size.x / 2 and left_finger_index == -1:
-				left_finger_index = event.index
-				left_joystick_center = event.position
-		else:
-			if event.index == right_finger_index:
-				right_finger_index = -1
-				touch_look_input = Vector2.ZERO
-			elif event.index == left_finger_index:
-				left_finger_index = -1
-				move_input = Vector2.ZERO
 	
-	if event is InputEventScreenDrag:
-		if event.index == right_finger_index:
-			touch_look_input = event.relative
-			rotate_y(-touch_look_input.x * TOUCH_SENSITIVITY)
-			camera_pivot.rotate_x(-touch_look_input.y * TOUCH_SENSITIVITY)
-			camera_pivot.rotation.x = clamp(camera_pivot.rotation.x, deg_to_rad(-45), deg_to_rad(30))
-		elif event.index == left_finger_index:
-			var drag_vector = event.position - left_joystick_center
-			var max_range = 100.0
-			move_input = drag_vector.limit_length(max_range) / max_range
+	# Actualizar cámara
+	update_camera()
 
-# ============================================================
-# BOTONES UI
-# ============================================================
-func _on_jump_button_pressed() -> void:
+func handle_input(_delta: float) -> void:
+	var input_dir = Vector3.ZERO
+	
+	# Input del joystick táctil
+	if joystick and joystick.has_method("get_input"):
+		var joy_input = joystick.get_input()
+		input_dir.x = joy_input.x
+		input_dir.z = joy_input.y
+	else:
+		# Input de teclado como fallback
+		input_dir.x = Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
+		input_dir.z = Input.get_action_strength("move_back") - Input.get_action_strength("move_forward")
+	
+	input_dir = input_dir.normalized()
+	
+	# Calcular dirección relativa a la cámara
+	var direction = (transform.basis * input_dir).normalized()
+	
+	# Aplicar movimiento
+	if direction.length() > 0:
+		velocity.x = direction.x * SPEED
+		velocity.z = direction.z * SPEED
+	else:
+		velocity.x = move_toward(velocity.x, 0, SPEED)
+		velocity.z = move_toward(velocity.z, 0, SPEED)
+
+func update_camera() -> void:
+	if camera_pivot:
+		# Posicionar el pivote de la cámara
+		camera_pivot.global_position = global_position + Vector3(0, CAMERA_HEIGHT, 0)
+		
+		# Calcular posición de la cámara
+		var camera_pos = camera_pivot.global_position - camera_pivot.global_transform.basis.z * CAMERA_DISTANCE
+		camera.global_position = camera_pos
+		
+		# La cámara mira al jugador
+		camera.look_at(global_position + Vector3(0, 1.5, 0), Vector3.UP)
+
+func _on_jump_pressed() -> void:
 	if is_on_floor():
 		velocity.y = JUMP_VELOCITY
 
-func _on_crouch_button_button_down() -> void:
-	if not is_crouching:
-		is_crouching = true
-		current_speed = CROUCH_SPEED
-		scale.y = 0.5
-
-func _on_crouch_button_button_up() -> void:
+func _on_crouch_pressed() -> void:
+	is_crouching = !is_crouching
 	if is_crouching:
-		is_crouching = false
-		current_speed = SPEED
+		# Reducir altura del personaje
+		scale.y = 0.5
+	else:
 		scale.y = 1.0
 
-# ============================================================
-# TECLAS DE PRUEBA (PC)
-# ============================================================
-func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed:
-		if event.keycode == KEY_Q:
-			take_damage(10)
-		elif event.keycode == KEY_E:
-			heal(15)
-		elif event.keycode == KEY_F:
-			shoot()
-		elif event.keycode == KEY_R:
-			print("ESTADO: ", current_health, "/", max_health)
+func _on_shoot_pressed() -> void:
+	if can_shoot:
+		shoot()
+
+func shoot() -> void:
+	can_shoot = false
+	get_tree().create_timer(shoot_cooldown).timeout.connect(func(): can_shoot = true)
+	
+	# Raycast desde la cámara
+	var space_state = get_world_3d().direct_space_state
+	var query = PhysicsRayQueryParameters3D.new()
+	query.from = camera.global_position
+	query.to = camera.global_position - camera.global_transform.basis.z * 100.0
+	query.exclude = [self]
+	
+	var result = space_state.intersect_ray(query)
+	if result:
+		var collider = result.collider
+		if collider.has_method("take_damage"):
+			collider.take_damage(25)
+
+func take_damage(amount: int) -> void:
+	health -= amount
+	if health < 0:
+		health = 0
+	print("Jugador herido! Vida: ", health, "/", max_health)
+	
+	if health <= 0:
+		die()
+
+func die() -> void:
+	print("JUGADOR MUERE")
+	set_physics_process(false)
+	
+	# Animación de muerte
+	var tween = create_tween()
+	tween.tween_property(self, "rotation:x", PI / 2, 0.5)
+	await tween.finished
+	
+	# Esperar y reiniciar
+	await get_tree().create_timer(2.0).timeout
+	get_tree().reload_current_scene()
+
+func get_health() -> int:
+	return health

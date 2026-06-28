@@ -105,7 +105,7 @@ navigation_mesh = SubResource("NavigationMesh_6ykuk")
 [node name="Island" type="Node3D" parent="NavigationRegion3D" unique_id=1923299808]
 script = ExtResource("3_lquwl")
 
-[node name="Terrain" type="StaticBody3D" parent="NavigationRegion3D/Island" unique_id=675954493 groups=["Navigation"]]
+[node name="Terrain" type="StaticBody3D" parent="NavigationRegion3D/Island" unique_id=675954493 groups=["navigation"]]
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Island/Terrain" unique_id=249039935]
 

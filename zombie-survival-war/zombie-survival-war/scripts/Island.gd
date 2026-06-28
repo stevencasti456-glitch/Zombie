@@ -26,9 +26,9 @@ func _ready() -> void:
 	create_decoration_containers()
 	generate_island_mesh()
 	generate_decorations()
-	call_deferred("bake_navigation_mesh")
-	# Hornear navmesh DESPUÉS de generar toda la decoración
+
 	call_deferred("bake_navigation_mesh_with_decorations")
+
 func create_decoration_containers() -> void:
 	trees_container = Node3D.new()
 	trees_container.name = "TreesContainer"
@@ -91,8 +91,7 @@ func generate_island_mesh() -> void:
 	material.albedo_color = Color(0.08, 0.22, 0.06)
 	material.roughness = 0.95
 	material.metallic = 0.0
-	material.subsurface_scattering_strength = 0.1
-	material.subsurface_scattering_color = Color(0.1, 0.4, 0.05)
+	
 	material.vertex_color_use_as_albedo = true
 
 	terrain_mesh_instance.mesh = final_mesh
@@ -102,11 +101,13 @@ func generate_island_mesh() -> void:
 	if trimesh_shape:
 		terrain_collision.shape = trimesh_shape
 
-func bake_navigation_mesh() -> void:
+func bake_navigation_mesh_with_decorations() -> void:
 	var nav_region = get_parent() as NavigationRegion3D
 	if not nav_region:
 		push_error("No se encontro NavigationRegion3D como padre de Island")
 		return
+
+	await get_tree().process_frame
 
 	var nav_mesh = NavigationMesh.new()
 	nav_mesh.geometry_source_geometry_mode = NavigationMesh.SOURCE_GEOMETRY_GROUPS_WITH_CHILDREN
@@ -122,7 +123,7 @@ func bake_navigation_mesh() -> void:
 	nav_region.navigation_mesh = nav_mesh
 	nav_region.bake_navigation_mesh()
 
-	print("NavMesh horneado correctamente")
+	print("NavMesh horneado con decoracion correctamente")
 
 func check_space_and_place(x: float, z: float, radius: float) -> bool:
 	for item in placed_items:
@@ -352,9 +353,9 @@ func generate_logs() -> void:
 		var z = randf_range(-80.0, 80.0)
 
 		if check_space_and_place(x, z, 2.0):
-			var log = StaticBody3D.new()
-			log.name = "Log_" + str(i)
-			log.add_to_group("navigation")
+			var fallen_log = StaticBody3D.new()
+			fallen_log.name = "Log_" + str(i)
+			fallen_log.add_to_group("navigation")
 
 			var log_mesh = CylinderMesh.new()
 			log_mesh.top_radius = 0.3
@@ -364,20 +365,20 @@ func generate_logs() -> void:
 			var mesh_instance = MeshInstance3D.new()
 			mesh_instance.mesh = log_mesh
 			mesh_instance.set_surface_override_material(0, log_mat)
-			log.add_child(mesh_instance)
+			fallen_log.add_child(mesh_instance)
 
 			var collision = CollisionShape3D.new()
 			var shape = CylinderShape3D.new()
 			shape.radius = 0.3
 			shape.height = 3.0
 			collision.shape = shape
-			log.add_child(collision)
+			fallen_log.add_child(collision)
 
 			var terrain_y = get_terrain_height(x, z)
-			log.position = Vector3(x, terrain_y + 0.3, z)
-			log.rotation.z = PI / 2
-			log.rotation.y = randf_range(0, PI * 2)
-			logs_container.add_child(log)
+			fallen_log.position = Vector3(x, terrain_y + 0.3, z)
+			fallen_log.rotation.z = PI / 2
+			fallen_log.rotation.y = randf_range(0, PI * 2)
+			logs_container.add_child(fallen_log)
 
 func generate_ruins() -> void:
 	var ruin_mat = StandardMaterial3D.new()
@@ -506,27 +507,3 @@ func generate_props() -> void:
 			crate.position = Vector3(x, terrain_y + 0.5, z)
 			crate.rotation.y = randf_range(0, PI * 2)
 			props_container.add_child(crate)
-func bake_navigation_mesh_with_decorations() -> void:
-	var nav_region = get_parent() as NavigationRegion3D
-	if not nav_region:
-		push_error("No se encontro NavigationRegion3D como padre de Island")
-		return
-
-	# Esperar un frame para que todos los nodos se registren
-	await get_tree().process_frame
-
-	var nav_mesh = NavigationMesh.new()
-	nav_mesh.geometry_source_geometry_mode = NavigationMesh.SOURCE_GEOMETRY_GROUPS_WITH_CHILDREN
-	nav_mesh.geometry_parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_STATIC_COLLIDERS
-	nav_mesh.geometry_source_group_name = "navigation"
-	nav_mesh.cell_size = 0.5
-	nav_mesh.cell_height = 0.5
-	nav_mesh.agent_radius = 0.5
-	nav_mesh.agent_height = 2.0
-	nav_mesh.agent_max_climb = 0.5
-	nav_mesh.agent_max_slope = 45.0
-
-	nav_region.navigation_mesh = nav_mesh
-	nav_region.bake_navigation_mesh()
-
-	print("NavMesh horneado con decoracion correctamente")
