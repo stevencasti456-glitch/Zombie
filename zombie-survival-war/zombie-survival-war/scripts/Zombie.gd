@@ -17,7 +17,7 @@ var current_health: int = 50
 # REFERENCIAS
 # ============================================================
 var nav_agent: NavigationAgent3D
-var mesh_instance: MeshInstance3D
+var mesh_instance: Node3D
 var player: CharacterBody3D = null
 
 # ============================================================
@@ -35,7 +35,12 @@ var original_color: Color = Color(0.186, 0.392, 0.241)
 # ============================================================
 func _ready() -> void:
 	nav_agent = get_node_or_null("NavigationAgent3D")
-	mesh_instance = get_node_or_null("MeshInstance3D")
+	
+	# ← NUEVO: Crear modelo detallado del zombie
+	create_zombie_model()
+	
+	# ← NUEVO: mesh_instance ahora apunta al contenedor del modelo
+	mesh_instance = get_node_or_null("ZombieModel")
 
 	await get_tree().create_timer(0.5).timeout
 
@@ -56,10 +61,11 @@ func _ready() -> void:
 		nav_agent.target_desired_distance = ATTACK_RANGE
 		nav_agent.avoidance_enabled = false
 
+	# ← NUEVO: Guardar color original del torso (parte principal)
 	if mesh_instance:
-		var mat = mesh_instance.get_surface_override_material(0)
-		if mat:
-			original_color = mat.albedo_color
+		var torso = mesh_instance.get_node_or_null("Torso")
+		if torso and torso.get_surface_override_material(0):
+			original_color = torso.get_surface_override_material(0).albedo_color
 
 # ============================================================
 # NUMERO DE DANO FLOTANTE
@@ -192,32 +198,33 @@ func take_damage(amount: int) -> void:
 # ============================================================
 func die() -> void:
 	print("ZOMBIE MUERE")
-
 	set_physics_process(false)
-
+	
 	if nav_agent:
 		nav_agent.avoidance_enabled = false
-
+	
 	var gm = get_node_or_null("/root/GameManager")
 	if gm and gm.has_method("zombie_died"):
 		gm.zombie_died()
 		print("Game Manager notificado")
 	else:
 		push_warning("No se pudo notificar al GameManager")
-
+	
 	var tween = create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(self, "scale", Vector3(0.1, 0.1, 0.1), 0.5)
-
-	if mesh_instance and mesh_instance.get_surface_override_material(0):
-		var mat = mesh_instance.get_surface_override_material(0)
-		tween.tween_property(mat, "albedo_color:a", 0.0, 0.5)
-
+	
+	# ← CORREGIDO: Aplicar transparencia a TODAS las partes del modelo
+	if mesh_instance:
+		for child in mesh_instance.get_children():
+			if child is MeshInstance3D and child.get_surface_override_material(0):
+				var mat = child.get_surface_override_material(0)
+				tween.tween_property(mat, "albedo_color:a", 0.0, 0.5)
+	
 	await tween.finished
-
+	
 	create_blood_particles()
 	spawn_coin()
-
 	queue_free()
 
 # ============================================================
@@ -318,21 +325,176 @@ func look_at_player() -> void:
 	var direction = (player.global_position - global_position).normalized()
 	direction.y = 0
 	if direction.length() > 0.001:
-		rotation.y = atan2(-direction.x, -direction.z)
+		rotation.y = atan2(direction.x, direction.z)  # ← Quitado el signo negativo de -direction.x
 
 func rotate_towards_direction(direction: Vector3, delta: float) -> void:
 	var target_dir = Vector2(direction.x, direction.z)
 	if target_dir.length_squared() > 0.001:
-		var target_angle = atan2(-direction.x, -direction.z)
+		var target_angle = atan2(direction.x, direction.z)  # ← Quitado el signo negativo
 		rotation.y = rotate_toward(rotation.y, target_angle, ROTATION_SPEED * delta)
 
 func set_color(new_color: Color) -> void:
 	if mesh_instance == null:
 		return
-	var mat = mesh_instance.get_surface_override_material(0)
-	if mat:
-		mat.albedo_color = new_color
-	else:
-		var new_mat = StandardMaterial3D.new()
-		new_mat.albedo_color = new_color
-		mesh_instance.set_surface_override_material(0, new_mat)
+	
+	# ← NUEVO: Cambiar color de todas las partes del cuerpo (excepto ojos)
+	var parts_to_color = ["Head", "LeftArm", "RightArm"]
+	for part_name in parts_to_color:
+		var part = mesh_instance.get_node_or_null(part_name)
+		if part and part.get_surface_override_material(0):
+			part.get_surface_override_material(0).albedo_color = new_color
+	
+	# El torso tiene su propio color (camisa), no lo cambiamos
+	# Los ojos mantienen su brillo rojo
+
+# ============================================================
+# CREAR MODELO DETALLADO DEL ZOMBIE (FASE 2.6)
+# ============================================================
+func create_zombie_model() -> void:
+	# Verificar si ya existe
+	if has_node("ZombieModel"):
+		return
+	
+	# Contenedor principal
+	var model = Node3D.new()
+	model.name = "ZombieModel"
+	add_child(model)
+	
+	# --- MATERIALES ---
+	var skin_mat = StandardMaterial3D.new()
+	skin_mat.albedo_color = Color(0.45, 0.55, 0.38)
+	skin_mat.roughness = 0.9
+	
+	var shirt_mat = StandardMaterial3D.new()
+	shirt_mat.albedo_color = Color(0.25, 0.12, 0.08)
+	shirt_mat.roughness = 0.95
+	
+	var pants_mat = StandardMaterial3D.new()
+	pants_mat.albedo_color = Color(0.12, 0.12, 0.15)
+	pants_mat.roughness = 0.9
+	
+	var eye_mat = StandardMaterial3D.new()
+	eye_mat.albedo_color = Color(0.9, 0.05, 0.05)
+	eye_mat.emission_enabled = true
+	eye_mat.emission = Color(0.9, 0.05, 0.05)
+	eye_mat.emission_energy = 2.0
+	
+	var blood_mat = StandardMaterial3D.new()
+	blood_mat.albedo_color = Color(0.4, 0.02, 0.02)
+	blood_mat.roughness = 1.0
+	
+	var dirt_mat = StandardMaterial3D.new()
+	dirt_mat.albedo_color = Color(0.2, 0.15, 0.1)
+	dirt_mat.roughness = 1.0
+	
+	# --- CABEZA ---
+	var head = MeshInstance3D.new()
+	head.name = "Head"
+	var head_mesh = SphereMesh.new()
+	head_mesh.radius = 0.22
+	head_mesh.height = 0.44
+	head.mesh = head_mesh
+	head.set_surface_override_material(0, skin_mat)
+	head.position = Vector3(0, 1.6, 0)
+	model.add_child(head)
+	
+	# --- OJO IZQUIERDO ---
+	var eye_left = MeshInstance3D.new()
+	eye_left.name = "EyeLeft"
+	var eye_mesh = SphereMesh.new()
+	eye_mesh.radius = 0.06
+	eye_mesh.height = 0.12
+	eye_left.mesh = eye_mesh
+	eye_left.set_surface_override_material(0, eye_mat)
+	eye_left.position = Vector3(-0.08, 1.65, 0.18)
+	model.add_child(eye_left)
+	
+	# --- OJO DERECHO ---
+	var eye_right = MeshInstance3D.new()
+	eye_right.name = "EyeRight"
+	eye_right.mesh = eye_mesh.duplicate()
+	eye_right.set_surface_override_material(0, eye_mat.duplicate())
+	eye_right.position = Vector3(0.08, 1.65, 0.18)
+	model.add_child(eye_right)
+	
+	# --- TORSO (encorvado) ---
+	var torso = MeshInstance3D.new()
+	torso.name = "Torso"
+	var torso_mesh = CapsuleMesh.new()
+	torso_mesh.radius = 0.28
+	torso_mesh.height = 0.7
+	torso.mesh = torso_mesh
+	torso.set_surface_override_material(0, shirt_mat)
+	torso.position = Vector3(0, 0.95, 0)
+	torso.rotation.x = 0.25  # Encorvado hacia adelante
+	model.add_child(torso)
+	
+	# --- BRAZO IZQUIERDO ---
+	var arm_mesh = CylinderMesh.new()
+	arm_mesh.top_radius = 0.07
+	arm_mesh.bottom_radius = 0.06
+	arm_mesh.height = 0.75
+	
+	var left_arm = MeshInstance3D.new()
+	left_arm.name = "LeftArm"
+	left_arm.mesh = arm_mesh
+	left_arm.set_surface_override_material(0, skin_mat.duplicate())
+	left_arm.position = Vector3(-0.38, 1.0, 0.1)
+	left_arm.rotation.z = 0.15
+	model.add_child(left_arm)
+	
+	# --- BRAZO DERECHO ---
+	var right_arm = MeshInstance3D.new()
+	right_arm.name = "RightArm"
+	right_arm.mesh = arm_mesh.duplicate()
+	right_arm.set_surface_override_material(0, skin_mat.duplicate())
+	right_arm.position = Vector3(0.38, 1.0, 0.1)
+	right_arm.rotation.z = -0.15
+	model.add_child(right_arm)
+	
+	# --- PIERNA IZQUIERDA ---
+	var leg_mesh = CylinderMesh.new()
+	leg_mesh.top_radius = 0.11
+	leg_mesh.bottom_radius = 0.09
+	leg_mesh.height = 0.85
+	
+	var left_leg = MeshInstance3D.new()
+	left_leg.name = "LeftLeg"
+	left_leg.mesh = leg_mesh
+	left_leg.set_surface_override_material(0, pants_mat.duplicate())
+	left_leg.position = Vector3(-0.14, 0.42, 0)
+	left_leg.rotation.x = 0.05
+	model.add_child(left_leg)
+	
+	# --- PIERNA DERECHA ---
+	var right_leg = MeshInstance3D.new()
+	right_leg.name = "RightLeg"
+	right_leg.mesh = leg_mesh.duplicate()
+	right_leg.set_surface_override_material(0, pants_mat.duplicate())
+	right_leg.position = Vector3(0.14, 0.42, 0)
+	right_leg.rotation.x = -0.05
+	model.add_child(right_leg)
+	
+	# --- MANCHA DE SANGRE ---
+	var blood = MeshInstance3D.new()
+	blood.name = "BloodStain"
+	var blood_mesh = SphereMesh.new()
+	blood_mesh.radius = 0.15
+	blood_mesh.height = 0.3
+	blood.mesh = blood_mesh
+	blood.set_surface_override_material(0, blood_mat)
+	blood.position = Vector3(0.1, 1.05, 0.25)
+	blood.scale = Vector3(0.15, 0.1, 0.12)
+	model.add_child(blood)
+	
+	# --- MANCHA DE SUCIEDAD ---
+	var dirt = MeshInstance3D.new()
+	dirt.name = "DirtStain"
+	var dirt_mesh = SphereMesh.new()
+	dirt_mesh.radius = 0.18
+	dirt_mesh.height = 0.36
+	dirt.mesh = dirt_mesh
+	dirt.set_surface_override_material(0, dirt_mat)
+	dirt.position = Vector3(-0.15, 0.35, 0.2)
+	dirt.scale = Vector3(0.18, 0.12, 0.15)
+	model.add_child(dirt)

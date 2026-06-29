@@ -20,11 +20,12 @@ var can_shoot: bool = true
 var shoot_cooldown: float = 0.5
 var is_crouching: bool = false
 
-# Controles táctiles
-var joystick: Node
-var jump_button: Node
-var crouch_button: Node
-var shoot_button: Node
+# Controles táctiles - RESTAURADOS
+var move_input: Vector2 = Vector2.ZERO
+var touch_look_input: Vector2 = Vector2.ZERO
+var left_finger_index: int = -1
+var right_finger_index: int = -1
+var left_joystick_center: Vector2 = Vector2.ZERO
 
 # ============================================================
 # CREAR PERSONAJE HUMANOIDE (FASE 2.5)
@@ -33,7 +34,8 @@ func create_humanoid_character() -> void:
 	# Eliminar mesh cilindro anterior si existe
 	var old_mesh = get_node_or_null("MeshInstance3D")
 	if old_mesh:
-		old_mesh.queue_free()
+		remove_child(old_mesh)
+		old_mesh.free()
 	
 	# Crear contenedor del personaje
 	var character = Node3D.new()
@@ -159,38 +161,23 @@ func _ready() -> void:
 	camera = get_node("CameraPivot/Camera3D")
 	camera_pivot = get_node("CameraPivot")
 	
-	# Crear personaje humanoide en vez de usar el mesh cilindro
+	# Crear personaje humanoide
 	create_humanoid_character()
-	
-	# Configurar controles táctiles
-	setup_touch_controls()
 	
 	# Configurar animación
 	setup_animations()
-
-func setup_touch_controls() -> void:
-	var ui = get_node_or_null("UI")
-	if ui:
-		joystick = ui.get_node_or_null("Joystick")
-		jump_button = ui.get_node_or_null("JumpButton")
-		crouch_button = ui.get_node_or_null("CrouchButton")
-		shoot_button = ui.get_node_or_null("ShootButton")
-		
-		if jump_button:
-			jump_button.pressed.connect(_on_jump_pressed)
-		if crouch_button:
-			crouch_button.pressed.connect(_on_crouch_pressed)
-		if shoot_button:
-			shoot_button.pressed.connect(_on_shoot_pressed)
+	
+	# DEBUG: Verificar posición inicial
+	print("DEBUG: Posición inicial Y: ", global_position.y)
+	print("DEBUG: is_on_floor: ", is_on_floor())
 
 func setup_animations() -> void:
-	# Aquí puedes agregar animaciones del personaje
 	pass
 
 func _physics_process(delta: float) -> void:
 	# Gravedad
 	if not is_on_floor():
-		velocity.y -= 25.0 * delta
+		velocity.y -= 15.0 * delta
 	
 	# Manejar input
 	handle_input(delta)
@@ -200,58 +187,77 @@ func _physics_process(delta: float) -> void:
 	
 	# Actualizar cámara
 	update_camera()
+	
+	# DEBUG: Verificar si está cayendo
+	if global_position.y < 10:
+		print("DEBUG: Personaje cayendo! Y: ", global_position.y)
 
+# ============================================================
+# INPUT - RESTAURADO PARA MÓVIL Y PC
+# ============================================================
 func handle_input(_delta: float) -> void:
 	var input_dir = Vector3.ZERO
 	
-	# Input del joystick táctil
-	if joystick and joystick.has_method("get_input"):
-		var joy_input = joystick.get_input()
-		input_dir.x = joy_input.x
-		input_dir.z = joy_input.y
+	# --- MÓVIL: Joystick virtual por detección de pantalla ---
+	if move_input.length() > 0:
+		input_dir.x = move_input.x
+		input_dir.z = move_input.y
+	
+	# --- PC: Teclado como fallback ---
 	else:
-		# Input de teclado como fallback
 		input_dir.x = Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
 		input_dir.z = Input.get_action_strength("move_back") - Input.get_action_strength("move_forward")
 	
 	input_dir = input_dir.normalized()
 	
-	# Calcular dirección relativa a la cámara
-	var direction = (transform.basis * input_dir).normalized()
-	
-	# Aplicar movimiento
-	if direction.length() > 0:
+	# --- MOVIMIENTO RELATIVO A LA CÁMARA (intuitivo) ---
+	if input_dir.length() > 0:
+		# Obtener dirección de la cámara (plana, sin inclinación)
+		var camera_forward = -camera.global_transform.basis.z
+		camera_forward.y = 0
+		camera_forward = camera_forward.normalized()
+		
+		var camera_right = camera.global_transform.basis.x
+		camera_right.y = 0
+		camera_right = camera_right.normalized()
+		
+		# Combinar: joystick adelante = adelante de la cámara
+		var direction = (camera_forward * -input_dir.z + camera_right * input_dir.x).normalized()
+		
 		velocity.x = direction.x * SPEED
 		velocity.z = direction.z * SPEED
+		
+		# ← CAMBIO ELIMINADO: NO rotar personaje automáticamente
+		# El personaje siempre mira hacia adelante de la cámara
+		# O si quieres que mire hacia donde camina, hazlo suave y solo cuando no estás rotando cámara
 	else:
 		velocity.x = move_toward(velocity.x, 0, SPEED)
 		velocity.z = move_toward(velocity.z, 0, SPEED)
 
 func update_camera() -> void:
 	if camera_pivot:
-		# Posicionar el pivote de la cámara
+		# Solo mover el pivote a la posición del jugador (sin rotar)
 		camera_pivot.global_position = global_position + Vector3(0, CAMERA_HEIGHT, 0)
-		
-		# Calcular posición de la cámara
-		var camera_pos = camera_pivot.global_position - camera_pivot.global_transform.basis.z * CAMERA_DISTANCE
-		camera.global_position = camera_pos
-		
-		# La cámara mira al jugador
-		camera.look_at(global_position + Vector3(0, 1.5, 0), Vector3.UP)
+		# La cámara mantiene su posición relativa al pivote (definida en la escena)
 
-func _on_jump_pressed() -> void:
+# ============================================================
+# BOTONES UI - NOMBRES COMPATIBLES CON main.tscn
+# ============================================================
+func _on_jump_button_pressed() -> void:
 	if is_on_floor():
 		velocity.y = JUMP_VELOCITY
 
-func _on_crouch_pressed() -> void:
-	is_crouching = !is_crouching
-	if is_crouching:
-		# Reducir altura del personaje
+func _on_crouch_button_button_down() -> void:
+	if not is_crouching:
+		is_crouching = true
 		scale.y = 0.5
-	else:
+
+func _on_crouch_button_button_up() -> void:
+	if is_crouching:
+		is_crouching = false
 		scale.y = 1.0
 
-func _on_shoot_pressed() -> void:
+func _on_shoot_button_pressed() -> void:
 	if can_shoot:
 		shoot()
 
@@ -259,11 +265,14 @@ func shoot() -> void:
 	can_shoot = false
 	get_tree().create_timer(shoot_cooldown).timeout.connect(func(): can_shoot = true)
 	
-	# Raycast desde la cámara
+	# Raycast desde la cámara con offset
 	var space_state = get_world_3d().direct_space_state
 	var query = PhysicsRayQueryParameters3D.new()
-	query.from = camera.global_position
-	query.to = camera.global_position - camera.global_transform.basis.z * 100.0
+	
+	var camera_forward = -camera.global_transform.basis.z.normalized()
+	var origin = camera.global_position + camera_forward * 1.5
+	query.from = origin
+	query.to = origin + camera_forward * 100.0
 	query.exclude = [self]
 	
 	var result = space_state.intersect_ray(query)
@@ -296,3 +305,39 @@ func die() -> void:
 
 func get_health() -> int:
 	return health
+
+# ============================================================
+# CONTROLES TÁCTILES - CORREGIDOS
+# ============================================================
+func _input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		if event.is_pressed():
+			# ← CAMBIO: Dedo izquierdo = mover (mitad izquierda, TODA la altura)
+			if event.position.x <= get_viewport().size.x / 2 and left_finger_index == -1:
+				left_finger_index = event.index
+				left_joystick_center = event.position
+			# ← CAMBIO: Dedo derecho = mirar (mitad derecha, TODA la altura)
+			elif event.position.x > get_viewport().size.x / 2 and right_finger_index == -1:
+				right_finger_index = event.index
+		else:
+			# Soltar dedo
+			if event.index == right_finger_index:
+				right_finger_index = -1
+				touch_look_input = Vector2.ZERO
+			elif event.index == left_finger_index:
+				left_finger_index = -1
+				move_input = Vector2.ZERO
+	
+	if event is InputEventScreenDrag:
+		# Dedo derecho arrastrando = rotar cámara
+		if event.index == right_finger_index:
+			touch_look_input = event.relative
+			rotate_y(-touch_look_input.x * SENSITIVITY)
+			if camera_pivot:
+				camera_pivot.rotate_x(-touch_look_input.y * SENSITIVITY)
+				camera_pivot.rotation.x = clamp(camera_pivot.rotation.x, deg_to_rad(-45), deg_to_rad(30))
+		# Dedo izquierdo arrastrando = joystick virtual
+		elif event.index == left_finger_index:
+			var drag_vector = event.position - left_joystick_center
+			var max_range = 100.0
+			move_input = drag_vector.limit_length(max_range) / max_range

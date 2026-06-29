@@ -41,6 +41,9 @@ geometry_source_group_name = &"navigation"
 agent_height = 2.0
 agent_max_climb = 0.5
 
+[sub_resource type="BoxShape3D" id="BoxShape3D_h2yge"]
+size = Vector3(300, 50, 300)
+
 [sub_resource type="PlaneMesh" id="PlaneMesh_eyj0i"]
 size = Vector2(2000, 2000)
 
@@ -110,6 +113,7 @@ script = ExtResource("3_lquwl")
 [node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Island/Terrain" unique_id=249039935]
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Island/Terrain" unique_id=1471110477]
+shape = SubResource("BoxShape3D_h2yge")
 
 [node name="Ocean" type="MeshInstance3D" parent="NavigationRegion3D/Island" unique_id=869874313]
 transform = Transform3D(0.9999999, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 0, 0, 0)
@@ -130,7 +134,7 @@ shape = SubResource("CylinderShape3D_6ykuk")
 [node name="CameraPivot" type="Node3D" parent="Player" unique_id=1788794327]
 
 [node name="Camera3D" type="Camera3D" parent="Player/CameraPivot" unique_id=468461176]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, -2.5, 6)
 
 [node name="UI" type="CanvasLayer" parent="Player" unique_id=266692329]
 

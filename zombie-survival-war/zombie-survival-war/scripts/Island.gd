@@ -91,15 +91,22 @@ func generate_island_mesh() -> void:
 	material.albedo_color = Color(0.08, 0.22, 0.06)
 	material.roughness = 0.95
 	material.metallic = 0.0
-	
 	material.vertex_color_use_as_albedo = true
 
 	terrain_mesh_instance.mesh = final_mesh
 	terrain_mesh_instance.set_surface_override_material(0, material)
 
 	var trimesh_shape = final_mesh.create_trimesh_shape()
-	if trimesh_shape:
+	if trimesh_shape and terrain_collision:
 		terrain_collision.shape = trimesh_shape
+		print("DEBUG: Colisión del terreno creada correctamente")
+	else:
+		push_warning("DEBUG: Falló la colisión del terreno, creando piso de respaldo")
+		if terrain_collision:
+			var box_shape = BoxShape3D.new()
+			box_shape.size = Vector3(ISLAND_RADIUS * 2.5, 10, ISLAND_RADIUS * 2.5)
+			terrain_collision.shape = box_shape
+			terrain_collision.position = Vector3(0, 5, 0)
 
 func bake_navigation_mesh_with_decorations() -> void:
 	var nav_region = get_parent() as NavigationRegion3D
@@ -119,10 +126,8 @@ func bake_navigation_mesh_with_decorations() -> void:
 	nav_mesh.agent_height = 2.0
 	nav_mesh.agent_max_climb = 0.5
 	nav_mesh.agent_max_slope = 45.0
-
 	nav_region.navigation_mesh = nav_mesh
 	nav_region.bake_navigation_mesh()
-
 	print("NavMesh horneado con decoracion correctamente")
 
 func check_space_and_place(x: float, z: float, radius: float) -> bool:
