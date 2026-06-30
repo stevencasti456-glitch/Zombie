@@ -167,30 +167,141 @@ func _ready() -> void:
 	# Configurar animación
 	setup_animations()
 	
-	# DEBUG: Verificar posición inicial
-	print("DEBUG: Posición inicial Y: ", global_position.y)
-	print("DEBUG: is_on_floor: ", is_on_floor())
+	# ← AGREGAR ESTA LÍNEA:
+	setup_touch_controls()
 
 func setup_animations() -> void:
 	pass
 
+func setup_touch_controls() -> void:
+	var ui = get_node_or_null("UI")
+	if not ui:
+		return
+	
+	# Eliminar botones antiguos de texto (si existen)
+	var old_jump = ui.get_node_or_null("JumpButton")
+	if old_jump:
+		old_jump.queue_free()
+	var old_crouch = ui.get_node_or_null("CrouchButton")
+	if old_crouch:
+		old_crouch.queue_free()
+	var old_shoot = ui.get_node_or_null("ShootButton")
+	if old_shoot:
+		old_shoot.queue_free()
+	
+	# Obtener tamaño de pantalla
+	var viewport_size = get_viewport().size
+	var right_x = viewport_size.x - 100  # Margen derecho
+	var bottom_y = viewport_size.y - 100   # Margen inferior
+	
+	# Zona derecha inferior: Saltar, Agacharse y Disparar
+	# Para control con dedos derechos
+	# Disparar (más grande, abajo derecha)
+	create_icon_button(ui, "ShootButton", "shoot", Vector2(right_x, bottom_y - 80))
+	
+	# Saltar (arriba del disparar)
+	create_icon_button(ui, "JumpButton", "jump", Vector2(right_x, bottom_y - 170))
+	
+	# Agacharse (debajo del disparar)
+	create_icon_button(ui, "CrouchButton", "crouch", Vector2(right_x, bottom_y + 10))
+
+
+func create_icon_button(parent: Node, name: String, icon_type: String, pos: Vector2) -> TextureButton:
+	var btn = TextureButton.new()
+	btn.name = name
+	btn.custom_minimum_size = Vector2(80, 80)
+	btn.position = pos
+	
+	# Fondo semitransparente
+	var bg = ColorRect.new()
+	bg.custom_minimum_size = Vector2(80, 80)
+	bg.color = Color(0, 0, 0, 0.3)
+	
+	# Icono
+	var icon = Control.new()
+	icon.custom_minimum_size = Vector2(60, 60)
+	icon.position = Vector2(10, 10)
+	
+	if icon_type == "jump":
+		# Personita saltando
+		var body = Polygon2D.new()
+		body.polygon = PackedVector2Array([
+			Vector2(30, 15), Vector2(40, 25), Vector2(35, 45),
+			Vector2(25, 45), Vector2(20, 25)
+		])
+		body.color = Color(0.9, 0.9, 0.9)
+		icon.add_child(body)
+		# Piernas dobladas
+		var legs = Polygon2D.new()
+		legs.polygon = PackedVector2Array([
+			Vector2(25, 45), Vector2(20, 55), Vector2(30, 50),
+			Vector2(35, 50), Vector2(40, 55), Vector2(35, 45)
+		])
+		legs.color = Color(0.7, 0.7, 0.7)
+		icon.add_child(legs)
+		btn.pressed.connect(_on_jump_button_pressed)
+		
+	elif icon_type == "crouch":
+		# Personita agachada
+		var body = Polygon2D.new()
+		body.polygon = PackedVector2Array([
+			Vector2(30, 25), Vector2(45, 30), Vector2(40, 50),
+			Vector2(20, 50), Vector2(15, 30)
+		])
+		body.color = Color(0.9, 0.9, 0.9)
+		icon.add_child(body)
+		# Rodillas dobladas
+		var legs = Polygon2D.new()
+		legs.polygon = PackedVector2Array([
+			Vector2(20, 50), Vector2(15, 58), Vector2(25, 55),
+			Vector2(35, 55), Vector2(45, 58), Vector2(40, 50)
+		])
+		legs.color = Color(0.7, 0.7, 0.7)
+		icon.add_child(legs)
+		btn.button_down.connect(_on_crouch_button_button_down)
+		btn.button_up.connect(_on_crouch_button_button_up)
+		
+	elif icon_type == "shoot":
+		# Pistola estilizada
+		var gun = Polygon2D.new()
+		gun.polygon = PackedVector2Array([
+			Vector2(15, 30), Vector2(45, 28), Vector2(50, 32),
+			Vector2(45, 36), Vector2(15, 34)
+		])
+		gun.color = Color(0.8, 0.8, 0.8)
+		icon.add_child(gun)
+		# Cañón
+		var barrel = Polygon2D.new()
+		barrel.polygon = PackedVector2Array([
+			Vector2(45, 29), Vector2(55, 30), Vector2(55, 34), Vector2(45, 35)
+		])
+		barrel.color = Color(0.6, 0.6, 0.6)
+		icon.add_child(barrel)
+		btn.pressed.connect(_on_shoot_button_pressed)
+	
+	btn.add_child(bg)
+	btn.add_child(icon)
+	parent.add_child(btn)
+	
+	return btn
+
 func _physics_process(delta: float) -> void:
-	# Gravedad
+	# Gravedad (solo si no está en el suelo)
 	if not is_on_floor():
 		velocity.y -= 15.0 * delta
-	
+
 	# Manejar input
 	handle_input(delta)
-	
+
 	# Mover personaje
 	move_and_slide()
-	
+
 	# Actualizar cámara
 	update_camera()
-	
-	# DEBUG: Verificar si está cayendo
-	if global_position.y < 10:
-		print("DEBUG: Personaje cayendo! Y: ", global_position.y)
+
+	# DEBUG: Solo imprimir si realmente cae al vacío (debajo del terreno)
+	if global_position.y < -5:
+		print("DEBUG: ¡Personaje cayendo al vacío! Y: ", global_position.y)
 
 # ============================================================
 # INPUT - RESTAURADO PARA MÓVIL Y PC
@@ -341,3 +452,28 @@ func _input(event: InputEvent) -> void:
 			var drag_vector = event.position - left_joystick_center
 			var max_range = 100.0
 			move_input = drag_vector.limit_length(max_range) / max_range
+
+func _process(delta: float) -> void:
+	# Actualizar posiciones de botones en tiempo real
+	update_button_positions()
+
+func update_button_positions() -> void:
+	var ui = get_node_or_null("UI")
+	if not ui:
+		return
+	
+	var viewport_size = get_viewport().size
+	var right_x = viewport_size.x - 100
+	var bottom_y = viewport_size.y - 100
+	
+	var shoot = ui.get_node_or_null("ShootButton")
+	if shoot:
+		shoot.position = Vector2(right_x, bottom_y - 80)
+	
+	var jump = ui.get_node_or_null("JumpButton")
+	if jump:
+		jump.position = Vector2(right_x, bottom_y - 170)
+	
+	var crouch = ui.get_node_or_null("CrouchButton")
+	if crouch:
+		crouch.position = Vector2(right_x, bottom_y + 10)

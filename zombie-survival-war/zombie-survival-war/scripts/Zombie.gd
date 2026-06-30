@@ -42,6 +42,11 @@ func _ready() -> void:
 	# ← NUEVO: mesh_instance ahora apunta al contenedor del modelo
 	mesh_instance = get_node_or_null("ZombieModel")
 
+	# Ajustar posición de la colisión para que toque el suelo
+	var collision = get_node_or_null("CollisionShape3D")
+	if collision:
+		collision.position = Vector3(0, 1.0, 0)
+
 	await get_tree().create_timer(0.5).timeout
 
 	player = get_tree().get_first_node_in_group("Player")
@@ -268,46 +273,26 @@ func create_blood_particles() -> void:
 # SPAWN DE MONEDA
 # ============================================================
 func spawn_coin() -> void:
-	var coin = Area3D.new()
-	coin.name = "Coin"
-	coin.position = global_position + Vector3(0, 0.5, 0)
-	coin.add_to_group("Coin")
-
-	var script = load("res://scripts/Coin.gd")
-	if script:
-		coin.set_script(script)
-
-	var collision = CollisionShape3D.new()
-	collision.name = "CollisionShape3D"
-	var shape = SphereShape3D.new()
-	shape.radius = 0.8
-	collision.shape = shape
-	coin.add_child(collision)
-
-	var coin_mesh = MeshInstance3D.new()
-	coin_mesh.name = "MeshInstance3D"
-	var cylinder = CylinderMesh.new()
-	cylinder.top_radius = 0.2
-	cylinder.bottom_radius = 0.2
-	cylinder.height = 0.05
-	coin_mesh.mesh = cylinder
-	coin_mesh.rotation.x = PI / 2
-
-	var coin_mat = StandardMaterial3D.new()
-	coin_mat.albedo_color = Color(1.0, 0.84, 0.0)
-	coin_mat.metallic = 1.0
-	coin_mat.roughness = 0.2
-	coin_mesh.material_override = coin_mat
-
-	coin.add_child(coin_mesh)
-
-	get_tree().get_root().add_child(coin)
-
-	var tween = create_tween()
-	tween.tween_property(coin, "position:y", coin.position.y + 1.0, 0.3)
-	tween.tween_property(coin, "position:y", coin.position.y, 0.3)
-
-	print("Moneda creada en: ", coin.global_position)
+	var coin_scene = load("res://scenes/Coin.tscn")
+	if not coin_scene:
+		return
+	
+	# Crear 6 monedas
+	for i in range(6):
+		var coin = coin_scene.instantiate()
+		get_tree().get_root().add_child(coin)
+		
+		# Posición aleatoria alrededor del zombie
+		var offset = Vector3(
+			randf_range(-1.5, 1.5),
+			0.5,
+			randf_range(-1.5, 1.5)
+		)
+		coin.global_position = global_position + offset
+		
+		# Valor aleatorio entre 10 y 25 Núcleos
+		var value = randi_range(10, 25)
+		coin.set_value(value)
 
 # ============================================================
 # UTILIDADES

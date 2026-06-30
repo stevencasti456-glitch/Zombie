@@ -18,6 +18,7 @@ var props_container: Node3D
 
 var placed_items: Array = []
 
+
 func _ready() -> void:
 	global_position = Vector3.ZERO
 	if has_node("Terrain"):
@@ -28,6 +29,7 @@ func _ready() -> void:
 	generate_decorations()
 
 	call_deferred("bake_navigation_mesh_with_decorations")
+
 
 func create_decoration_containers() -> void:
 	trees_container = Node3D.new()
@@ -54,12 +56,14 @@ func create_decoration_containers() -> void:
 	props_container.name = "PropsContainer"
 	add_child(props_container)
 
+
 func get_terrain_height(x: float, z: float) -> float:
 	var dist = Vector2(x, z).length()
 	var height = 12.0 + (sin(x * 0.05) * cos(z * 0.05) * 6.0) + (sin(x * 0.02) * 10.0)
 	if dist > ISLAND_RADIUS - 30.0:
 		height -= (dist - (ISLAND_RADIUS - 30.0)) * 1.5
 	return height
+
 
 func generate_island_mesh() -> void:
 	var plane_mesh = PlaneMesh.new()
@@ -99,14 +103,16 @@ func generate_island_mesh() -> void:
 	var trimesh_shape = final_mesh.create_trimesh_shape()
 	if trimesh_shape and terrain_collision:
 		terrain_collision.shape = trimesh_shape
-		print("DEBUG: Colisión del terreno creada correctamente")
+		terrain_collision.position = Vector3.ZERO
+		print("DEBUG: Colisión del terreno creada correctamente (trimesh)")
 	else:
-		push_warning("DEBUG: Falló la colisión del terreno, creando piso de respaldo")
+		push_warning("DEBUG: Falló la colisión del terreno, usando piso de respaldo")
 		if terrain_collision:
 			var box_shape = BoxShape3D.new()
-			box_shape.size = Vector3(ISLAND_RADIUS * 2.5, 10, ISLAND_RADIUS * 2.5)
+			box_shape.size = Vector3(ISLAND_RADIUS * 3.0, 100, ISLAND_RADIUS * 3.0)
 			terrain_collision.shape = box_shape
-			terrain_collision.position = Vector3(0, 5, 0)
+			terrain_collision.position = Vector3(0, 25, 0)
+
 
 func bake_navigation_mesh_with_decorations() -> void:
 	var nav_region = get_parent() as NavigationRegion3D
@@ -130,6 +136,7 @@ func bake_navigation_mesh_with_decorations() -> void:
 	nav_region.bake_navigation_mesh()
 	print("NavMesh horneado con decoracion correctamente")
 
+
 func check_space_and_place(x: float, z: float, radius: float) -> bool:
 	for item in placed_items:
 		var dist = sqrt(pow(x - item.x, 2) + pow(z - item.z, 2))
@@ -140,6 +147,7 @@ func check_space_and_place(x: float, z: float, radius: float) -> bool:
 	placed_items.append({"x": x, "z": z, "r": radius})
 	return true
 
+
 func generate_decorations() -> void:
 	generate_rocks()
 	generate_grass()
@@ -149,6 +157,7 @@ func generate_decorations() -> void:
 	generate_logs()
 	generate_ruins()
 	generate_props()
+
 
 func generate_rocks() -> void:
 	var rock_mat = StandardMaterial3D.new()
@@ -185,6 +194,7 @@ func generate_rocks() -> void:
 			var terrain_y = get_terrain_height(x, z)
 			static_body.transform.origin = Vector3(x, terrain_y + scale_factor * 0.3, z)
 			i += 1
+
 
 func generate_grass() -> void:
 	var multimesh_instance = MultiMeshInstance3D.new()
@@ -227,6 +237,7 @@ func generate_grass() -> void:
 
 			mm.set_instance_transform(grass_placed, t)
 			grass_placed += 1
+
 
 func generate_trees() -> void:
 	var tree_count = 30
@@ -278,6 +289,7 @@ func generate_trees() -> void:
 			tree.position = Vector3(x, terrain_y, z)
 			trees_container.add_child(tree)
 
+
 func generate_bushes() -> void:
 	var bush_count = 40
 	var bush_mat = StandardMaterial3D.new()
@@ -311,6 +323,7 @@ func generate_bushes() -> void:
 			var terrain_y = get_terrain_height(x, z)
 			bush.position = Vector3(x, terrain_y + bush_mesh.radius * 0.5, z)
 			bushes_container.add_child(bush)
+
 
 func generate_flowers() -> void:
 	var flower_count = 200
@@ -346,6 +359,7 @@ func generate_flowers() -> void:
 			t.origin = Vector3(x, terrain_y + 0.15, z)
 			mm.set_instance_transform(placed, t)
 			placed += 1
+
 
 func generate_logs() -> void:
 	var log_count = 8
@@ -384,6 +398,7 @@ func generate_logs() -> void:
 			fallen_log.rotation.z = PI / 2
 			fallen_log.rotation.y = randf_range(0, PI * 2)
 			logs_container.add_child(fallen_log)
+
 
 func generate_ruins() -> void:
 	var ruin_mat = StandardMaterial3D.new()
@@ -444,6 +459,7 @@ func generate_ruins() -> void:
 		pillar.position = Vector3(x, terrain_y + 0.5, z)
 		pillar.rotation.z = randf_range(0.2, 0.8)
 		ruins_container.add_child(pillar)
+
 
 func generate_props() -> void:
 	var barrel_mat = StandardMaterial3D.new()

@@ -117,3 +117,6 @@ func get_game_manager() -> Node:
 				return child
 
 	return null
+
+func set_value(val: int) -> void:
+	coin_value = val
