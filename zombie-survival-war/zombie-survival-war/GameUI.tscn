@@ -2,54 +2,5 @@
 
 [ext_resource type="Script" uid="uid://hs2uhrc0yw6m" path="res://scripts/GameUI.gd" id="1_4itvn"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0m10a"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_01hyd"]
-
-[node name="GameUI" type="Control" unique_id=1161807695]
-layout_mode = 3
-anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
+[node name="GameUI" type="CanvasLayer" unique_id=1781666661]
 script = ExtResource("1_4itvn")
-
-[node name="HealthBar" type="ProgressBar" parent="." unique_id=439264872]
-layout_mode = 1
-anchors_preset = -1
-anchor_left = 0.35
-anchor_top = 0.92
-anchor_right = 0.65
-anchor_bottom = 0.97
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_styles/background = SubResource("StyleBoxFlat_0m10a")
-theme_override_styles/fill = SubResource("StyleBoxFlat_01hyd")
-step = 1.0
-value = 100.0
-
-[node name="ZombiesLabel" type="Label" parent="." unique_id=11381197]
-layout_mode = 1
-anchors_preset = -1
-anchor_left = 0.05
-anchor_top = 0.02
-anchor_right = 0.3
-anchor_bottom = 0.1
-offset_right = 1.0
-offset_bottom = 23.0
-theme_override_font_sizes/font_size = 32
-text = "Zombie: 0"
-vertical_alignment = 1
-
-[node name="WaveLabel" type="Label" parent="." unique_id=1247742146]
-layout_mode = 1
-anchors_preset = -1
-anchor_left = 0.7
-anchor_top = 0.02
-anchor_right = 0.95
-anchor_bottom = 0.1
-offset_right = 40.0
-offset_bottom = 23.0
-theme_override_font_sizes/font_size = 32
-text = "Oleada: 1"
-horizontal_alignment = 2
-vertical_alignment = 1
